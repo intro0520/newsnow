@@ -1,23 +1,48 @@
-# NewsNow — Render Blueprint (Docker)
+# NewsNow — Render 部署配置（只描述部署，不改任何源码）
 #
-# 这个文件只负责部署，不改动任何源码：source 抓取、NewsItem 结构、interval 与缓存机制
-# 全部保持上游原样（commit 0f95b2c，MIT）。
+# 上游：https://github.com/newsnext/newsnow （原 ourongxing/newsnow，MIT）
+# 本 fork 相对上游 commit 0f95b2c（v0.0.42）只多这一个文件；抓取逻辑、页面、数据源、
+# 缓存机制与 interval 全部保持上游原样。
 #
-# Render 会自行注入 HOST 与 PORT，镜像里的 node-server 运行时按这两个环境变量监听，
-# 所以这里不写 PORT；缓存与建表开关保持上游默认（ENABLE_CACHE=true、INIT_TABLE=true）。
-# 不配 GitHub OAuth 三个变量时，服务端自动进入 disabledLogin：榜单照常可读，
-# 只是游客无法用 ?latest 强制刷新——这是上游的既定行为，不需要为部署改代码。
+# 为什么用 Node 原生 Runtime 而不是 Docker：
+#   nitro.config.ts 里 preset 就是 "node-server"，产物 dist/output/server/index.mjs 直接由
+#   node 启动即可，同时提供页面与服务端 API，因此 Render 不需要容器。
+#
+# 命令要点：
+#   - 显式用 npm exec 拉 pnpm@10.30.3（= package.json 的 packageManager），
+#     避免平台默认 pnpm 版本忽略 patchedDependencies / onlyBuiltDependencies，
+#     导致 better-sqlite3 的安装脚本被跳过、缓存库建不起来。
+#   - 不用 package.json 的 `npm start`：它带 `--env-file .env.server`，而 .env.server 不入库。
+#     环境变量直接由 Render 注入。
+#
+# Render 会注入 PORT（默认 10000），并且只在运行时（不在构建时）设置 NODE_ENV=production，
+# 所以这里不写 PORT / NODE_ENV，构建期才能装上 vite、tsx 等 devDependencies。
+#
+# 数据库与缓存：沿用上游默认 db0 + better-sqlite3，文件在实例本地 .data/db.sqlite3。
+# Render Free 的文件系统是临时的，实例 spin down / 重启 / 重新部署后该缓存会清空，
+# 页面与接口不受影响，只是下一次请求要现场重抓。需要长期保留缓存时只要把 plan 换成
+# 付费实例并挂 Persistent Disk，命令与环境变量都不用改。
 
 services:
   - type: web
     name: newsnow
-    runtime: docker
+    runtime: node
     plan: free
     region: oregon
-    dockerfilePath: ./Dockerfile
-    dockerContext: ./
-    healthCheckPath: /api/latest
-    envVars:
-      - key: NODE_ENV
-        value: "production"
+    branch: main
+    buildCommand: npm exec --yes -- pnpm@10.30.3 install --frozen-lockfile && npm exec --yes -- pnpm@10.30.3 run build
+    startCommand: node dist/output/server/index.mjs
+    healthCheckPath: /
     autoDeploy: true
+    envVars:
+      # 不写则 Render 用默认 Node 24；这里固定到与上游 Docker 基线同为 22 的行0 LTS
+      - key: NODE_VERSION
+        value: 22.23.2
+      - key: HOST
+        value: 0.0.0.0
+      - key: INIT_TABLE
+        value: "true"
+      - key: ENABLE_CACHE
+        value: "true"
+      # 不配 G_CLIENT_ID / G_CLIENT_SECRET / JWT_SECRET：服务端按上游逻辑自动进入 disabledLogin，
+      # 榜单与 /api/s 照常可读，只是关掉 GitHub 登录（本部署不需要的登录系统）。
