@@ -35,7 +35,7 @@ services:
     healthCheckPath: /
     autoDeploy: true
     envVars:
-      # 不写则 Render 用默认 Node 24；这里固定到与上游 Docker 基线同为 22 的行0 LTS
+      # 不写则 Render 用默认 Node 24；这里固定到与上游 Docker 基线同为 22 的 LTS
       - key: NODE_VERSION
         value: 22.23.2
       - key: HOST
