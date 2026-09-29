@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router"
 import { useIsFetching } from "@tanstack/react-query"
 import type { SourceID } from "@shared/types"
 import { NavBar } from "../navbar"
-import { Menu } from "./menu"
 import { currentSourcesAtom, goToTopAtom } from "~/atoms"
 
 function GoTop() {
@@ -19,7 +18,7 @@ function GoTop() {
 
 function Github() {
   return (
-    <button type="button" title="Github" className="i-ph:github-logo-duotone btn" onClick={() => window.open(Homepage)} />
+    <button type="button" title="Github" className="i-ph:github-logo-duotone btn" onClick={() => window.open("https://github.com/intro0520/newsnow")} />
   )
 }
 
@@ -72,7 +71,6 @@ export function Header() {
         <GoTop />
         <Refresh />
         <Github />
-        <Menu />
       </span>
     </>
   )
