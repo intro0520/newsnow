@@ -1,0 +1,23 @@
+# NewsNow — Render Blueprint (Docker)
+#
+# 这个文件只负责部署，不改动任何源码：source 抓取、NewsItem 结构、interval 与缓存机制
+# 全部保持上游原样（commit 0f95b2c，MIT）。
+#
+# Render 会自行注入 HOST 与 PORT，镜像里的 node-server 运行时按这两个环境变量监听，
+# 所以这里不写 PORT；缓存与建表开关保持上游默认（ENABLE_CACHE=true、INIT_TABLE=true）。
+# 不配 GitHub OAuth 三个变量时，服务端自动进入 disabledLogin：榜单照常可读，
+# 只是游客无法用 ?latest 强制刷新——这是上游的既定行为，不需要为部署改代码。
+
+services:
+  - type: web
+    name: newsnow
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
+    healthCheckPath: /api/latest
+    envVars:
+      - key: NODE_ENV
+        value: "production"
+    autoDeploy: true
